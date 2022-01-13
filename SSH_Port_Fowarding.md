@@ -1,0 +1,113 @@
+## 1. SSH Port Forwarding
+
+Có 3 loại SSH port forwarding là:
+
+- Local port forwarding: là dạng kết nối từ phía SSH client được chuyển tiếp qua SSH server, rồi đi đến host/server đích.
+- Remote port forwarding: kết nối từ phía SSH server được chuyển tiếp qua SSH client, rồi đi đến host/server đích.
+- Dynamic port forwarding: tương tự “local port forwarding”, kết nối từ phía SSH client được chuyển tiếp qua SSH server, rồi đến đích tuỳ ý không định trước.
+
+1. Local port forwarding
+
+Mở kết nối ssh tới ssh server với tuỳ chọn “-L port:host:hostport” trong đó
+
+- port là cổng ở phía ssh client được chỉ định để mở socket.
+- host:hostport là socket đích muốn tới (nhìn từ phía ssh server).
+
+Chúng ta sẽ làm rõ hơn vấn đề thông qua ví dụ giả định:
+
+- Desktop của bạn A (phía ssh client) có IP 192.168.1.101
+- Server trung gian B (phía ssh server) có IP 172.16.0.111
+- Đích muốn đến là web server X, có IP 1.1.1.1, có mở cổng 22/SSH và chỉ chấp nhận kết nối từ Server B.
+
+Thay cho việc phải ssh từ A lên B, rồi tiếp tục ssh lên đích là server X, chúng ta có thể mở một “cánh cửa thần kỳ” là một socket ở phía A để lên X như sau:
+```
+ssh -L 2222:1.1.1.1:22 username@172.16.0.111
+```
+
+Sau khi kết nối thành công, phía host A (ssh client) sẽ thấy một socket là 127.0.0.1:2222 được mở bởi ssh
+
+```
+[root@A:~]# netstat -lntp | grep 2222 tcp 0 0 127.0.0.1:2222 0.0.0.0:* LISTEN 10469/ssh
+```
+
+Bây giờ đứng từ A chúng ta có thể kết nối ssh lên server X thông qua socket này như sau:
+```
+ssh username@127.0.0.1 -p 2222
+```
+Trên thực tế, một trường hợp rất thường xuyên áp dụng “local port forwarding” đó là Mysql tunnelling. Ví dụ từ Desktop A, bạn có thể ssh lên Server B, trên B chạy Mysql ở cổng 3306 và chỉ chấp nhận kết nối từ local. Vậy một cách đơn giản, để kết nối Mysql trên B từ A, đó là dùng port forwarding
+```
+ssh -L 3307:localhost:3306 username@172.168.0.111
+```
+Sau khi có kết nối ssh, tiếp theo là dùng lệnh mysql trên A để kết nối đến dịch vụ Mysql trên server B
+```
+mysql -h 127.0.0.1 -P 3307 -uroot -p
+```
+Giả sử bạn đồng thời muốn mở socket trên A để các máy khác trong cùng mạng LAN có thể kết nối được đến Mysql trên B. Chỉ cần thêm tuỳ “-g” trong lệnh ssh, như sau:
+```
+ssh -L 3307:localhost:3306 -g username@172.168.0.111
+```
+Bây giờ trên máy A2 trong mạng LAN, có IP 192.168.1.102, bạn kết nối đến Mysql trên B thông qua A như sau:
+```
+mysql -h 192.168.1.101 -P 3307 -uroot -p
+```
+2. Remote port forwarding
+
+Mở kết nối ssh tới ssh server với tuỳ chọn “-R port:host:hostport” trong đó
+
+- port là cổng ở phía ssh server được chỉ định để mở socket.
+- host:hostport là socket đích muốn tới (nhìn từ phía ssh client).
+
+Về mặt logic “remote port forwarding” hoàn toàn tương tự với “local port forwarding” chỉ thay việc kết nối đi từ ssh client bằng đi từ phía ssh server, thông qua ssh client để đến server/host đích.
+
+Trên thực tế “remote port forwarding” ít được dùng hơn “local port forwarding” cũng như “dynamic port forwarding”, một trong những trường hợp ứng dụng của “remote port forwarding” là “SSH ngược”.
+
+Giả định:
+
+- Desktop của bạn A (phía ssh client) có IP 192.168.1.101, từ B không thể ping/kết nối tới A.
+- Server trung gian B (phía ssh server) có IP 172.16.0.111, từ A có thể ssh tới B.
+- Server B2 cùng dải mạng với ssh server B có IP 172.16.0.112
+
+Mục đích: cho phép B ssh ngược về A. Có thể mở rộng thêm bằng việc cho phép B2 ssh ngược về A thông qua B.
+
+Thực hiện điều này đơn giản bằng các mở một kết nối ssh từ A lên B với tuỳ chọn “-R”, như sau:
+```
+ssh -R 2222:localhost:22 username@172.16.0.111
+```
+Ở trên B, chúng ta có thể thấy một socket được mở ở cổng 2222
+```
+[root@B:~]# netstat -lntp | grep 2222 tcp 0 0 0.0.0.0:2222 0.0.0.0:* LISTEN 29375/10
+```
+Thông qua socket này, từ B chúng ta có thể ssh ngược về A, như sau:
+```
+ssh root@localhost -p 2222
+```
+Để B2 cũng có thể kết nối ssh tới A thông qua B, thì trên cấu hình /etc/ssh/sshd_config của B phải thêm
+
+``GatewayPorts yes``
+
+Sau khi thay đổi cấu hình ssh, chúng ta cần khởi động lại dịch vụ ssh và khởi tạo lại kết nối.
+
+Bây giờ trên B2 chúng ta có thể kết nối tới A, như sau:
+```
+[root@B2:~]# ssh root@172.16.0.111 -p 2222
+```
+
+3. Dynamic port forwarding
+
+Mở kết nối ssh tới ssh server với tuỳ chọn “-D port” với port ở đây là cổng ở phía ssh client được bật lên như socket của SOCKS server. Thông qua SOCKS này chúng ta có thể đi tới bất kỳ đâu mà ở phía ứng dụng đích đó chỉ biết chúng ta đi ra từ server B, chứ không hề biết thực sự kết nối được khởi tạo từ A.
+
+```
+ssh -D 2222 username@172.16.0.111
+```
+
+Sau khi tạo xong kết nối, chúng ta có thể sử dụng SOCKS này để ra Internet an toàn, ví dụ có thể cấu hình vào Firefox như hình bên dưới.
+
+Để kiểm tra việc cấu hình và SOCKS có hoạt động đúng, chúng ta có thể đi tới địa chỉ http://www.ip2location.com/ để kiểm tra IP ra Internet.
+
+![a28N8.png](http://support.linex.vn/uploads/image/file/163/a28N8.png)
+
+![a28N8.png](http://support.linex.vn/uploads/image/file/163/a28N8.png)
+
+![4iK3b.png](http://support.linex.vn/uploads/image/file/164/4iK3b.png)
+
+![4iK3b.png](http://support.linex.vn/uploads/image/file/164/4iK3b.png)
