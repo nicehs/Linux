@@ -2,7 +2,7 @@
 
 [1. SSH Tips and Tricks](https://github.com/nicehs/Linux/blob/main/1.%20SSH_Port_Fowarding.md)  
 
-[2. Install LEMP stack CentOS7 Wordpress](https://github.com/nicehs/Linux/blob/main/2.%20Install%20LEMP%20stack%20CentOS7%20Wordpress.md) 
+[2. Install LEMP stack CentOS7 Wordpress](https://github.com/nicehs/Linux/blob/main/2.%20Install%20LEMP%20stack%20CentOS7%20Wordpress.md)  
 [2.1 Install Nginx](https://github.com/nicehs/Linux/blob/main/2.1.%20Install%20Nginx.md)  
 [2.2 Install Database](https://github.com/nicehs/Linux/blob/main/2.2%20Install%20Database.md)  
 [2.3 Install php-fpm](https://github.com/nicehs/Linux/blob/main/2.3.%20Install%20php-fpm.md)
