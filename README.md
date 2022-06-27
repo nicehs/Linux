@@ -1,6 +1,6 @@
 # README
 
-[1. SSH Tips and Tricks](:note:9a6ae25b-67f2-440e-a335-9e4b1a8e7c69)
+[1. SSH Tips and Tricks]https://github.com/nicehs/Linux/blob/main/1.%20SSH_Port_Fowarding.md
 
 [2. Install LEMP stack CentOS7 Wordpress](:note:6cad0d3b-9eda-4714-8990-70f5b7fe4669)
 [2.1 Install Nginx](:note:edb1a2b7-7aaf-477e-b980-456707f289c5)
